@@ -2,31 +2,64 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Particles Simulation</title>
+    <title>Ariel Ekgren - Particles</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.149.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.149.0/examples/jsm/"
+        }
+      }
+    </script>
+    <link rel="stylesheet" type="text/css" href="styles.css">
     <style>
       body {
         margin: 0;
         overflow: hidden;
       }
-      #buttonContainer {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        z-index: 1;
+      #canvasWrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 100vh; /* Keep this line */
+        box-sizing: border-box;
       }
       canvas {
-        display: block;
+        width: 300px; /* Set the width of the canvas */
+        height: 300px; /* Set the height of the canvas */
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5); /* Optional: add a shadow to the canvas */
+        border-radius: 8px; /* Optional: add border radius to the canvas */
+      }
+
+      /* Use media queries to adjust the size of the canvas based on the viewport width */
+      @media (max-width: 600px) {
+        canvas {
+          width: 200px;
+          height: 200px;
+        }
       }
     </style>
+    
   </head>
+
   <body>
-    <div id="buttonContainer">
-      <button id="startButton">Start</button>
-      <button id="stopButton" disabled>Stop</button>
-      <button id="restartButton" disabled>Restart</button>
+
+    <div class="app-header">
+      <div class="left-menu">
+          <div class="menu-container">
+              <a class="nav-item" href="/">Overview</a>
+              <a aria-current="page" class="nav-item active" href="/particles">Particles</a>
+          </div>
+      </div>
     </div>
-    <div id="canvasContainer"></div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="particles-3d.js"></script>
+
+    <div id="canvasWrapper">
+      <div id="canvasContainer"></div>
+    </div>
+    
+    <script type="module" src="/particles-3d.js"></script>
   </body>
 </html>
