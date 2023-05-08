@@ -11,16 +11,15 @@ let conf;
 let controls;
 let animationId = null; // Define the animationId variable
 
-// const MAX_TRAIL_LENGTH = 10;
-
 conf = {
   size: 20,
-  size2: 10,
   numTypes: 8,
   numForces: 4,
   numParticles: 40,
-  MAX_TRAIL_LENGTH: 30,
-  cameraDistance: 30,
+  trailLength: 10,
+  // Below are derived values
+  size2: 10,
+  cameraDistance: 22,
 };
 
 class Particle {
@@ -41,7 +40,7 @@ class Particle {
 
         // Create a buffer geometry for the trail
         const trailGeometry = new THREE.BufferGeometry();
-        trailGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(conf.MAX_TRAIL_LENGTH * 3), 3));
+        trailGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(conf.trailLength * 3), 3));
         const trailMaterial = new THREE.LineBasicMaterial({ color: colors[type] });
 
         // Create the trail line
@@ -50,7 +49,7 @@ class Particle {
 
         // Set the rest of the positions in the trail geometry to NaN
         const positions = this.trail.geometry.attributes.position;
-        for (let i = 1; i < conf.MAX_TRAIL_LENGTH; i++) {
+        for (let i = 1; i < conf.trailLength; i++) {
           positions.setXYZ(i, NaN, NaN, NaN);
         }
         positions.needsUpdate = true;
@@ -95,7 +94,7 @@ class Particle {
                 forceVector.multiplyScalar(forces);
 
                 this.velocity.add(forceVector);
-                this.velocity.clampLength(0, 2.5*0.05);
+                this.velocity.clampLength(0, 0.5);
             }
         });
 
@@ -132,7 +131,7 @@ class Particle {
           }
         }
         this.trailPositions.unshift(currentPosition);
-        if (this.trailPositions.length > conf.MAX_TRAIL_LENGTH) {
+        if (this.trailPositions.length > conf.trailLength) {
           this.trailPositions.pop();
         }
 
@@ -189,7 +188,7 @@ function cleanup() {
     camera = null; scene = null; renderer = null; colors = null; typeProperties = null; particles = null; audioContext = null; animationId = null;
 
     conf.size2 = conf.size / 2;
-    conf.cameraDistance = conf.size * 1.5;
+    conf.cameraDistance = conf.size * 1.1;
     
     init();
     animate();
@@ -234,24 +233,26 @@ function init() {
     controls.minPolarAngle = Math.PI / 2; // 90 degrees in radians
     controls.maxPolarAngle = Math.PI / 2; // 90 degrees in radians
 
+    /*** GUI ***/
     const gui = new GUI();
 
-    gui.add(conf, 'size', 1, 100).onChange(() => cleanup());
-    gui.add(conf, 'numTypes', 1, 10).step(1).onChange(() => cleanup());
-    gui.add(conf, 'numForces', 1, 10).step(1).onChange(() => cleanup());
-    gui.add(conf, 'numParticles', 1, 100).step(1).onChange(() => cleanup());
-    gui.add(conf, 'MAX_TRAIL_LENGTH', 1, 100).step(1).onChange(() => cleanup());
+    gui.add(conf, 'size', 1, 100).step(1).onChange(() => cleanup());
+    gui.add(conf, 'numTypes', 1, 50).step(1).onChange(() => cleanup());
+    gui.add(conf, 'numForces', 1, 20).step(1).onChange(() => cleanup());
+    gui.add(conf, 'numParticles', 1, 400).step(1).onChange(() => cleanup());
+    gui.add(conf, 'trailLength', 1, 100).step(1).onChange(() => cleanup());
 
-    const gridColor = new THREE.Color('rgb(128, 128, 128)')
+    /*** 3D BOX ***/
+    const gridColor = new THREE.Color('rgb(96, 96, 96)')
     
     const boxGeometry = new THREE.BoxGeometry(conf.size, conf.size, conf.size);
     const edgesGeometry = new THREE.EdgesGeometry(boxGeometry);
     const edgesMaterial = new THREE.LineBasicMaterial({ color: gridColor });
     const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
     scene.add(edges);
-
+    
     function createGrid(size, color, rotation, position) {
-        const grid = new THREE.GridHelper(size, size / 1, color, color);
+        const grid = new THREE.GridHelper(size, 10, color, color);
         grid.rotation.x = rotation.x;
         grid.rotation.y = rotation.y;
         grid.rotation.z = rotation.z;
@@ -268,9 +269,10 @@ function init() {
     ];
     
     grids.forEach((grid) => scene.add(grid));
+    
 
     colors = Array.from({ length: conf.numTypes }, () => new THREE.Color(Math.random(), Math.random(), Math.random()));
-    typeProperties = Array.from({ length: conf.numTypes }, () => ({ f: Array.from({ length: conf.numForces }, () => Math.random() * 0.3 - 0.15) }));
+    typeProperties = Array.from({ length: conf.numTypes }, () => ({ f: Array.from({ length: conf.numForces }, () => Math.random() * 2.0 - 1.0) }));
 
     particles = Array.from({ length: conf.numParticles }, () => new Particle(
         (Math.random() - 0.5) * conf.size,
@@ -317,19 +319,6 @@ function animate() {
   animationId = requestAnimationFrame(animate); // Update the animationId variable with the value returned by requestAnimationFrame
 
 }
-
-/*
-function onWindowResize() {
-
-  // camera.aspect = window.innerWidth / window.innerHeight;
-  // camera.updateProjectionMatrix();
-  camera.aspect = canvasWidth / canvasHeight;
-  camera.updateProjectionMatrix();
-
-  renderer.setSize( window.innerWidth, window.innerHeight );
-
-}
-*/
 
 function onWindowResize() {
   // Get the canvas wrapper element
