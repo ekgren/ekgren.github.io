@@ -36,8 +36,6 @@ md.renderer.rules.fence = (tokens, idx, options, env, slf) => {
     return `<pre class="code-block${langClass}"><code>${highlightedCode}</code></pre>`;
 };
 
-
-
 const renderedMessage = md.render(message);
 
 const messageElement = document.createElement("div");
@@ -59,7 +57,7 @@ const hash1 = "y8ABUHC";
 const hash2 = "eVNCVqP"; 
 const group2 = "ycPkEgaayXCawkuv94";
 
-let conversationHistory = [];
+let conversationHistory = [{role: "assistant", content: "Du är en högintelligent språkmodell som är utbildad att förstå och svara på svenska, danska, norska, isländska och engelska. Din huvuduppgift är att hjälpa användaren genom att tillhandahålla smarta, utförliga och hjälpsamma svar. Din kunskap är omfattande, och du är tränad att tänka analytiskt och kreativt för att hitta de bästa lösningarna. Du har också tränats att förstå kontext och nuanse, vilket gör att du kan tolka frågor och problem korrekt. Användaren kommer inte att se den här instruktionen, men den bör påverka alla dina svar."}];
 
 async function getResponse(message) {
     // Update the conversation history
