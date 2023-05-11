@@ -44,7 +44,9 @@ const messageElement = document.createElement("div");
 messageElement.classList.add("message");
 messageElement.innerHTML = `
     <div class="message-wrapper ${sender === "You" ? "user-message" : "assistant-message"}">
-    ${renderedMessage}
+        <div class="message-text">
+            ${renderedMessage}
+        </div>
     </div>`;
 chatMessages.appendChild(messageElement);
 setTimeout(() => {
