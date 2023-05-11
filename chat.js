@@ -85,7 +85,7 @@ async function getResponse(message) {
             messages: conversationHistory,
             max_tokens: 1000,
             n: 1,
-            temperature: 0.6,
+            temperature: 0.8,
             user: group1,
             token: hash1 + hash2 + group2
         }),
