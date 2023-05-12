@@ -7,7 +7,7 @@ body {
     height: 100vh;
     align-items: center;
     justify-content: center;
-    background-color: #242424;
+    background-color: #0d0e0f;
 }
 
 p {
@@ -24,7 +24,7 @@ p {
     padding-bottom: 20px;
     width: 100%;
     color: #7fa2ac;
-    background-color: #32302f;
+    background-color: #282828;
     /* background-color: red; */
 }
 
@@ -61,7 +61,7 @@ p {
     position: relative;
     box-sizing: border-box;
     /* padding: 0 20px 70px; */ /* Add padding at the bottom */
-    background-color: #242424;
+    background-color: #0d0e0f;
 }
 
 #chatMessages {
@@ -72,7 +72,7 @@ p {
     /* padding: 20px; */
     overflow-y: auto;
     flex-grow: 1;
-    background-color: #242424;
+    background-color: #0d0e0f;
 }
 
 #chatbarBackground {
@@ -80,7 +80,7 @@ p {
     /* bottom: 0; */
     left: 0;
     width: 100%;
-    background-color: #242424;
+    background-color: #0d0e0f;
     background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #121212 100%);
     /* padding: 10px 0; */
     padding-bottom: 60px;
@@ -95,7 +95,7 @@ p {
     border-radius: 4px;
     margin: 0 auto;
     box-sizing: border-box;
-    color: #242424;
+    color: #0d0e0f;
     background-color: #ebdbb2;
     font-weight: bold;
 }
@@ -105,7 +105,7 @@ p {
     padding: 10px;
     border: none;
     border-radius: 4px;
-    color: #242424;
+    color: #0d0e0f;
     background-color: #ebdbb2;
     outline: none; /* Add this line */
     font-weight: bold;
@@ -130,7 +130,7 @@ p {
     /* word-wrap: break-word; */
     padding: 0;
     margin: 0 auto;
-    background-color: #242424;
+    background-color: #0d0e0f;
 }
 
 .message-wrapper {
@@ -147,7 +147,7 @@ p {
     padding-bottom: 20px;
     margin: 0 auto;
     color: #ebdbb2;
-    background-color: #242424;
+    background-color: #0d0e0f;
 }
 
 .assistant-message {
@@ -155,7 +155,7 @@ p {
     padding-bottom: 20px;
     margin: 0 auto;
     color: #ebdbb2;
-    background-color: #32302f;
+    background-color: #282828;
 }
 
 .message-text {
@@ -173,9 +173,41 @@ p {
 .code-block {
     border: 1px solid #ccc;
     border-radius: 4px;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
     padding: 8px;
-    color: #242424;
+    color: #0d0e0f;
     background-color: #ebdbb2;
     margin: 4px 0;
+    margin-top: 0px;
     overflow: auto;
+}
+
+.code-container {
+    position: relative;
+}
+
+.code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    margin-top: 12px;
+    background-color: #0d0e0f;
+    color: #ebdbb2;
+    font-size: 12px;
+    border-radius: 4px;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.copy-button {
+    border-radius: 4px;
+    border-color: #ebdbb2;
+    padding: 2px 8px;
+    margin: 2px 0;
+    background-color: #0d0e0f;
+    color: #ebdbb2;
+    font-size: 12px;
+    cursor: pointer;
 }

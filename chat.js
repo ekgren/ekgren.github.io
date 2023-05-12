@@ -3,6 +3,35 @@ const chatMessages = document.getElementById("chatMessages");
 const userInput = document.getElementById("userInput");
 const sendButton = document.getElementById("sendButton");
 
+/*
+
+const colors = {
+        dark0="#0d0e0f",
+        dark="#202020",
+        background_dark="#1d2021",
+        background="#282828",
+        background_light="#32302f",
+        foreground="#ebdbb2",
+        gray="#dedede",
+        medium_gray="#504945",
+        comment="#665c54",
+        milk="#e7d7ad",
+        error_red="#cc241d",
+        red="#fb4934",
+        orange="#d65d0e",
+        bright_yellow="#fabd2f",
+        soft_yellow="#eebd35",
+        pink="#d4879c",
+        magenta="#b16286",
+        soft_green="#98971a",
+        forest_green="#689d6a",
+        clean_green="#8ec07c",
+        blue_gray="#458588",
+        dark_gray="#83a598",
+        light_blue="#7fa2ac",
+    };
+
+*/
 
 function escapeHtml(unsafe) {
     return unsafe
@@ -11,45 +40,54 @@ function escapeHtml(unsafe) {
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
-  }  
-
+}
 
 function addMessage(sender, message) {
-const md = new markdownit();
+    const md = new markdownit();
 
-// Custom renderer for code blocks
-md.renderer.rules.fence = (tokens, idx, options, env, slf) => {
-    const token = tokens[idx];
-    const langClass = token.info ? ` language-${token.info}` : "";
-    const escapedContent = escapeHtml(token.content);
+    // Custom renderer for code blocks
+    md.renderer.rules.fence = (tokens, idx, options, env, slf) => {
+        const token = tokens[idx];
+        const langClass = token.info ? ` language-${token.info}` : "";
+        const escapedContent = escapeHtml(token.content);
 
-    let highlightedCode = escapedContent;
-    if (token.info) {
-    // Try to highlight the code using the specified language
-    try {
-        highlightedCode = hljs.highlight(token.info, token.content).value;
-    } catch (error) {
-        console.error("Error highlighting code:", error);
-    }
-    }
+        let highlightedCode = escapedContent;
+        if (token.info) {
+            // Try to highlight the code using the specified language
+            try {
+                highlightedCode = hljs.highlight(token.info, token.content).value;
+            } catch (error) {
+                console.error("Error highlighting code:", error);
+            }
+        }
 
-    return `<pre class="code-block${langClass}"><code>${highlightedCode}</code></pre>`;
-};
+        const codeBlock = `<pre class="code-block${langClass}"><code>${highlightedCode}</code></pre>`;
+        const copyButton = `<button class="copy-button" data-code="${escapedContent}">Copy</button>`;
+        return `<div class="code-container"><div class="code-header">${token.info || ''}${copyButton}</div>${codeBlock}</div>`;
+    };
 
-const renderedMessage = md.render(message);
+    const renderedMessage = md.render(message);
 
-const messageElement = document.createElement("div");
-messageElement.classList.add("message");
-messageElement.innerHTML = `
-    <div class="message-wrapper ${sender === "You" ? "user-message" : "assistant-message"}">
-        <div class="message-text">
-            ${renderedMessage}
-        </div>
-    </div>`;
-chatMessages.appendChild(messageElement);
-setTimeout(() => {
-    messageElement.scrollIntoView({ behavior: 'smooth' });
-  }, 0);
+    const messageElement = document.createElement("div");
+    messageElement.classList.add("message");
+    messageElement.innerHTML = `
+        <div class="message-wrapper ${sender === "You" ? "user-message" : "assistant-message"}">
+            <div class="message-text">
+                ${renderedMessage}
+            </div>
+        </div>`;
+    chatMessages.appendChild(messageElement);
+    setTimeout(() => {
+        messageElement.scrollIntoView({ behavior: 'smooth' });
+    }, 0);
+    
+    // Setup copy code functionality
+    messageElement.querySelectorAll('.copy-button').forEach(btn => {
+        btn.addEventListener('click', (event) => {
+            const code = event.target.getAttribute('data-code');
+            navigator.clipboard.writeText(code);
+        });
+    });
 }
 
 const group1 = "nlu";
