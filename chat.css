@@ -177,4 +177,5 @@ p {
     color: #242424;
     background-color: #ebdbb2;
     margin: 4px 0;
+    overflow: auto;
 }
