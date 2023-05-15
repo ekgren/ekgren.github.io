@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>Ariel Ekgren</title>
+<link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+
+<body>
+
+<div class="app-header">
+    <div class="left-menu">
+        <div class="menu-container">
+            <a class="nav-item" href="/">Overview</a>
+            <a class="nav-item" href="/particles">Particles</a>
+            <a aria-current="page" class="nav-item active" href="/gallery">Gallery</a>
+        </div>
+    </div>
+</div>
+
+<div class="image-gallery">
+
+    <div class="image-container" onclick="showImage(this)">
+        <img class="thumbnail" src="https://cdn.midjourney.com/7d9aacf1-cd11-4f0f-ab2e-6db0635defb9/0_3_640_N.webp" alt="image description">
+        <img class="full-image" src="https://cdn.midjourney.com/7d9aacf1-cd11-4f0f-ab2e-6db0635defb9/0_3.webp" alt="image description" style="display: none;">
+    </div>
+
+    <div class="image-container" onclick="showImage(this)">
+        <img class="thumbnail" src="https://cdn.midjourney.com/d41c8b5e-efdc-440a-87d5-d046f60e6de2/0_0_640_N.webp" alt="image description">
+        <img class="full-image" src="https://cdn.midjourney.com/d41c8b5e-efdc-440a-87d5-d046f60e6de2/0_0.webp" alt="image description" style="display: none;">
+    </div>
+
+    <div class="image-container" onclick="showImage(this)">
+        <img class="thumbnail" src="https://cdn.midjourney.com/38f5e1bf-d232-44d3-b117-05a8cbe6f0e2/0_2_640_N.webp" alt="image description">
+        <img class="full-image" src="https://cdn.midjourney.com/38f5e1bf-d232-44d3-b117-05a8cbe6f0e2/0_2.webp" alt="image description" style="display: none;">
+    </div>
+
+    <div class="image-container" onclick="showImage(this)">
+        <img class="thumbnail" src="https://cdn.midjourney.com/f0e6e895-f3e9-4a55-aa77-844b49c35ca3/0_0_640_N.webp" alt="image description">
+        <img class="full-image" src="https://cdn.midjourney.com/f0e6e895-f3e9-4a55-aa77-844b49c35ca3/0_0.webp" alt="image description" style="display: none;">
+    </div>
+
+    <div class="image-container" onclick="showImage(this)">
+      <img class="thumbnail" src="https://cdn.midjourney.com/5126ba7d-666f-460f-9707-3ca6496e7fc2/0_3_640_N.webp" alt="image description">
+      <img class="full-image" src="https://cdn.midjourney.com/5126ba7d-666f-460f-9707-3ca6496e7fc2/0_3.webp" alt="image description" style="display: none;">
+    </div>
+
+    <div class="image-container" onclick="showImage(this)">
+        <img class="thumbnail" src="https://cdn.midjourney.com/9e1250fd-0af3-4a53-b813-774edeaf49a7/0_1_640_N.webp" alt="image description">
+        <img class="full-image" src="https://cdn.midjourney.com/9e1250fd-0af3-4a53-b813-774edeaf49a7/0_1.webp" alt="image description" style="display: none;">
+    </div>
+
+    <div class="image-container" onclick="showImage(this)">
+        <img class="thumbnail" src="https://cdn.midjourney.com/87115cd4-5919-44d3-9dc8-53f127179bab/0_2_640_N.webp" alt="image description">
+        <img class="full-image" src="https://cdn.midjourney.com/87115cd4-5919-44d3-9dc8-53f127179bab/0_2.webp" alt="image description" style="display: none;">
+    </div>
+
+    <div class="image-container" onclick="showImage(this)">
+        <img class="thumbnail" src="https://cdn.midjourney.com/c4dd3562-df97-4ae6-899b-7e84fabb1005/0_2_640_N.webp" alt="image description">
+        <img class="full-image" src="https://cdn.midjourney.com/c4dd3562-df97-4ae6-899b-7e84fabb1005/0_2.webp" alt="image description" style="display: none;">
+    </div>
+
+    <div class="image-container" onclick="showImage(this)">
+        <img class="thumbnail" src="https://cdn.midjourney.com/5e1a3483-46dc-4d99-bdda-62f8e15805de/0_0_640_N.webp" alt="image description">
+        <img class="full-image" src="https://cdn.midjourney.com/5e1a3483-46dc-4d99-bdda-62f8e15805de/0_0.webp" alt="image description" style="display: none;">
+    </div>
+<!-- Add more image containers as needed -->
+</div>
+
+<script>
+function showImage(container) {
+  var fullImage = container.getElementsByClassName('full-image')[0];
+
+  // Show the lightbox with the full-sized image
+  var lightbox = document.getElementById('lightbox');
+  var lightboxImage = document.getElementById('lightbox-image');
+
+  lightboxImage.src = fullImage.src;
+  lightbox.style.display = 'flex';
+}
+
+function hideImage() {
+  // Hide the lightbox
+  var lightbox = document.getElementById('lightbox');
+  lightbox.style.display = 'none';
+}
+</script>
+
+<!-- Add this div to your HTML, ideally right before the closing </body> tag -->
+<div id="lightbox" onclick="hideImage()" style="display: none;">
+    <img id="lightbox-image" src="" alt="Full-sized image">
+</div>
+  
+</body>
+
+</html>
