@@ -4,23 +4,42 @@ import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 let camera, scene, renderer;
-let colors, typeProperties;
+let colors, typeForceConstants;
 let particles;
-let audioContext;
 let conf;
 let controls;
-let animationId = null; // Define the animationId variable
+let animationId = null;
+
+let forces;
 
 conf = {
-  size: 20,
-  numTypes: 8,
-  numForces: 4,
-  numParticles: 40,
+  size: 50,
+  numTypes: 20,
+  numForces: 8,
+  numParticles: 100,
   trailLength: 10,
   // Below are derived values
-  size2: 10,
-  cameraDistance: 22,
+  size2: 25,
+  cameraDistance: 50 * 1.4,
 };
+
+class Force {
+  constructor() {
+      // Initialize the force parameters
+      this.forceConstant = Math.random() * 20;
+      this.exponent = 1 + Math.random() * 2;
+  }
+
+  calculateForce(distance, delta, const1, const2) {
+      // Calculate the force as a vector quantity
+      // Gravitational force is inversely proportional to the square of the distance
+      const forceMagnitude = this.forceConstant / Math.pow(distance, this.exponent);
+      let forceDirection = delta.clone().normalize();
+
+      return forceDirection.multiplyScalar(forceMagnitude);
+  }
+}
+
 
 class Particle {
 
@@ -30,14 +49,19 @@ class Particle {
             new THREE.SphereGeometry(0.2, 4, 5),
             new THREE.MeshBasicMaterial({ color: colors[type] })
         );
-        this.mesh.position.set(x, y, z);
+        // this.mesh.position.set(x, y, z);
+        this.mesh.position.set(0, 0, 0);
         this.velocity = new THREE.Vector3(
-            Math.random() * 0.2 - 0.1,
-            Math.random() * 0.2 - 0.1,
-            Math.random() * 0.2 - 0.1
+          Math.random() * 0.02 - 0.01,
+          Math.random() * 0.02 - 0.01,
+          Math.random() * 0.02 - 0.01
         );
         this.type = type;
+        this.totalForceVector = new THREE.Vector3();
+        // this.forces = typeProperties[this.type].map(parameters => new Force(parameters));
 
+        
+        /*** TRAIL ***/
         // Create a buffer geometry for the trail
         const trailGeometry = new THREE.BufferGeometry();
         trailGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(conf.trailLength * 3), 3));
@@ -84,37 +108,74 @@ class Particle {
         );
 
         particles.forEach((particle) => {
-            if (this !== particle) {
-                const delta = new THREE.Vector3().subVectors(this.mesh.position, particle.mesh.position);
-                delta.set(wrap(delta.x, -conf.size2, conf.size2), wrap(delta.y, -conf.size2, conf.size2), wrap(delta.z, -conf.size2, conf.size2));
+          if (this !== particle) {
 
-                const distSq = delta.lengthSq() + 1e-6; // Add a small constant to avoid division by zero
-                const forceVector = delta.normalize();
-                const forces = typeProperties[this.type].f.map((f1, i) => (f1 * typeProperties[particle.type].f[i]) / distSq).reduce((a, b) => a + b, 0);
-                forceVector.multiplyScalar(forces);
+              // For each particle, calculate the distance delta vector
+              const delta = new THREE.Vector3().subVectors(this.mesh.position, particle.mesh.position);
+              delta.set(
+                  wrap(delta.x, -conf.size2, conf.size2),
+                  wrap(delta.y, -conf.size2, conf.size2),
+                  wrap(delta.z, -conf.size2, conf.size2)
+              );
 
-                this.velocity.add(forceVector);
-                this.velocity.clampLength(0, 0.5);
-            }
-        });
+              const dist = Math.sqrt(delta.lengthSq()) + 1e-6; // Add a small constant to avoid division by zero
+              
+              // const totalForceVector = new THREE.Vector3();
+              this.totalForceVector.set(0, 0, 0); // Reset the total force vector
+              forces.forEach((force, i) => {
+                  const forceVector = force.calculateForce(
+                      dist,
+                      delta,
+                      typeForceConstants[this.type][i],
+                      typeForceConstants[particle.type][i]
+                  );
+                  const forceMagnitude = typeForceConstants[this.type][i] * typeForceConstants[particle.type][i] / dist;
+                  forceVector.multiplyScalar(forceMagnitude);
+                  // totalForceVector.add(forceVector);
+                  this.totalForceVector.add(forceVector);
 
-        /* 
-        // Update audio based on position and velocity
-        const freq = 30 * Math.abs(this.velocity.x * 100 + this.velocity.y * 100 + this.velocity.z * 100);
-        if (isFinite(freq)) {
-            this.oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
-        }
+              });
 
-        // Stereo panning based on x-coordinate
-        const pan = this.mesh.position.x / conf.size2;
-        this.pannerNode.pan.setValueAtTime(pan, audioContext.currentTime);
+              // After calculating all the forces and before updating the velocities:
+              let maxForce = 0;
+              let maxVelocity = 0;
+              particles.forEach((particle) => {
+                  const forceMagnitude = particle.totalForceVector.length();
+                  const velocityMagnitude = particle.velocity.length();
+                  maxForce = Math.max(maxForce, forceMagnitude);
+                  maxVelocity = Math.max(maxVelocity, velocityMagnitude);
+              });
 
-        // Gain based on distance from camera
-        const distance = this.mesh.position.distanceTo(camera.position);
-        const maxDistance = camera.position.z;
-        const gain = 1 - Math.min(distance / maxDistance, 1);
-        this.gainNode.gain.setValueAtTime(gain, audioContext.currentTime);
-         */
+              // Renormalize the forces and velocities
+              particles.forEach((particle) => {
+                  if (maxForce > 0) {
+                      particle.totalForceVector.divideScalar(maxForce);
+                  }
+                  if (maxVelocity > 0) {
+                      particle.velocity.divideScalar(maxVelocity);
+                  }
+              });
+
+              
+              const speed = this.velocity.length();
+              const c = 0.5; // Speed of light
+              const deltaV = this.totalForceVector; // Change in velocity
+              const newVelocity = this.velocity.clone().add(deltaV); // Calculate the new velocity without relativity
+              const newSpeed = newVelocity.length();
+
+              if (newSpeed >= c) {
+                  // If the new speed exceeds the speed of light, adjust it using the relativistic velocity addition formula
+                  const u = deltaV.length();
+                  const v = speed;
+                  const newSpeedRelativistic = (v + u) / (1 + (v * u / Math.pow(c, 2)));
+                  newVelocity.normalize().multiplyScalar(newSpeedRelativistic);
+              }
+
+              this.velocity = newVelocity;
+              // this.velocity.add(totalForceVector);
+              // this.velocity.clampLength(0, 0.2);
+          }
+      })
 
         // Update the trail
         const currentPosition = this.mesh.position.clone();
@@ -184,11 +245,19 @@ function cleanup() {
     // Remove the old renderer's canvas from the DOM
     if (renderer && renderer.domElement) {renderer.domElement.remove();}
 
+    // Remove particles and their trails from the scene
+    if (particles) {
+        particles.forEach(particle => {
+            scene.remove(particle.mesh);
+            scene.remove(particle.trail);
+        });
+    }
+
     // Reset global variables
-    camera = null; scene = null; renderer = null; colors = null; typeProperties = null; particles = null; audioContext = null; animationId = null;
+    camera = null; scene = null; renderer = null; colors = null; typeForceConstants = null; particles = null; animationId = null;
 
     conf.size2 = conf.size / 2;
-    conf.cameraDistance = conf.size * 1.1;
+    conf.cameraDistance = conf.size * 1.4;
     
     init();
     animate();
@@ -228,6 +297,7 @@ function init() {
 
     // Set the OrbitControls target to the origin (0, 0, 0)
     controls.target.set(0, 0, 0);
+    controls.autoRotate = true;
 
     // Limit the rotation to the XY plane
     controls.minPolarAngle = Math.PI / 2; // 90 degrees in radians
@@ -263,58 +333,40 @@ function init() {
     const grids = [
         createGrid(conf.size, gridColor, { x: 0, y: 0, z: 0 }, { x: 0, y: -conf.size2, z: 0 }), // Ground
         createGrid(conf.size, gridColor, { x: 0, y: 0, z: 0 }, { x: 0, y: conf.size2, z: 0 }), // Ceiling
-        // createGrid(conf.size, gridColor, { x: Math.PI / 2, y: 0, z: 0 }, { x: 0, y: 0, z: -conf.size2 }), // Back wall
-        // createGrid(conf.size, gridColor, { x: 0, y: 0, z: Math.PI / 2}, { x: -conf.size2, y: 0, z: 0 }), // Left wall
-        // createGrid(conf.size, gridColor, { x: 0, y: 0, z: Math.PI / 2}, { x: conf.size2, y: 0, z: 0 }), // Right wall
-    ];
-    
+    ]
+
     grids.forEach((grid) => scene.add(grid));
-    
 
     colors = Array.from({ length: conf.numTypes }, () => new THREE.Color(Math.random(), Math.random(), Math.random()));
-    typeProperties = Array.from({ length: conf.numTypes }, () => ({ f: Array.from({ length: conf.numForces }, () => Math.random() * 2.0 - 1.0) }));
 
+    // For each type and force generate a constant and store in 2d array.
+    typeForceConstants = []; // Initialize an empty array
+    for (let i = 0; i < conf.numTypes; i++) {
+        let forceArray = []; // Initialize an array for this type
+        for (let j = 0; j < conf.numForces; j++) {
+            // Generate physical constants for this force and type
+            let typeForceConstant = Math.random() * 2 - 1; // Generate a random number between -1 and 1
+            forceArray.push(typeForceConstant); // Add the random number to the force array
+        }
+        typeForceConstants.push(forceArray); // Add the force array to the type array
+    }
+
+    // Create the forces
+    forces = Array.from({length: conf.numForces}, () => new Force());
+
+    // Generate the particles
     particles = Array.from({ length: conf.numParticles }, () => new Particle(
         (Math.random() - 0.5) * conf.size,
         (Math.random() - 0.5) * conf.size,
         (Math.random() - 0.5) * conf.size,
         Math.floor(Math.random() * conf.numTypes)
     )).map(p => (scene.add(p.mesh), p));
-
-    /* 
-    if (!audioContext) {
-        // Create AudioContext only once
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    }
-
-    const waveforms = ['sine', 'square', 'triangle', 'sawtooth'];
-
-    particles.forEach((particle) => {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        const pannerNode = audioContext.createStereoPanner();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(pannerNode);
-        pannerNode.connect(audioContext.destination);
-
-        oscillator.type = waveforms[particle.type % waveforms.length];
-        oscillator.frequency.value = 30 * 440;
-        gainNode.gain.setValueAtTime(1, audioContext.currentTime);
-
-        oscillator.start();
-
-        particle.oscillator = oscillator;
-        particle.gainNode = gainNode;
-        particle.pannerNode = pannerNode;
-    });
-     */
-}
+};
 
 function animate() {
 
   particles.forEach((particle) => particle.update(particles));
-
+  controls.update();
   renderer.render(scene, camera);
   animationId = requestAnimationFrame(animate); // Update the animationId variable with the value returned by requestAnimationFrame
 
