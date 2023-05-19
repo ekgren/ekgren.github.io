@@ -4,7 +4,7 @@ import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 let camera, scene, renderer;
-let colors, typeForceConstants;
+let colors;
 let particles;
 let conf;
 let controls;
@@ -13,204 +13,207 @@ let animationId = null;
 let forces;
 
 conf = {
-  size: 50,
-  numTypes: 20,
-  numForces: 8,
-  numParticles: 100,
-  trailLength: 10,
-  // Below are derived values
-  size2: 25,
-  cameraDistance: 50 * 1.4,
+    size: 500,
+    numTypes: 10,
+    numForces: 1,
+    numParticles: 100,
+    trailLength: 100,
+    // Below are derived values
+    size2: 250,
+    cameraDistance: 500 * 1.4,
 };
 
-class Force {
-  constructor() {
-      // Initialize the force parameters
-      this.forceConstant = Math.random() * 20;
-      this.exponent = 1 + Math.random() * 2;
-  }
+const G = 1.; //6.67430e-11; // Gravitational constant
+const k = 8.99 * Math.pow(10, 9);
+const mu0 = 4 * Math.PI * Math.pow(10, -3);
+const EPSILON = 1e-6; // A small constant
+// Time step (delta t)
+const dt = 0.01; // Adjust this value according to your simulation's needs
 
-  calculateForce(distance, delta, const1, const2) {
-      // Calculate the force as a vector quantity
-      // Gravitational force is inversely proportional to the square of the distance
-      const forceMagnitude = this.forceConstant / Math.pow(distance, this.exponent);
-      let forceDirection = delta.clone().normalize();
+const PARTICLE_SIZE = 4.0;
+const c = 1.06; // Speed of light
 
-      return forceDirection.multiplyScalar(forceMagnitude);
-  }
+function wrap(value, min, max) {
+    /**
+     * Wraps a value between a given minimum and maximum value.
+     */
+    const rangeSize = max - min;
+    const valueRelativeToMin = value - min;
+    const wrappedPosition = (valueRelativeToMin % rangeSize + rangeSize) % rangeSize;
+
+    return wrappedPosition + min;
 }
 
 
 class Particle {
 
-    constructor(x, y, z, type) {
-
-        this.mesh = new THREE.Mesh(
-            new THREE.SphereGeometry(0.2, 4, 5),
-            new THREE.MeshBasicMaterial({ color: colors[type] })
-        );
-        // this.mesh.position.set(x, y, z);
-        this.mesh.position.set(0, 0, 0);
-        this.velocity = new THREE.Vector3(
-          Math.random() * 0.02 - 0.01,
-          Math.random() * 0.02 - 0.01,
-          Math.random() * 0.02 - 0.01
-        );
+    constructor(config, type) {
+        this.mass = 100 * Math.random();
+        this.charge = 0.001 * Math.random();
         this.type = type;
+        this.typeColor = colors[type];
+        this.mesh = new THREE.Mesh(
+            // new THREE.SphereGeometry(PARTICLE_SIZE, 4, 5),
+            new THREE.SphereGeometry(1.5 + .1 * this.mass, 4, 5),
+            new THREE.MeshBasicMaterial({ color: this.typeColor })
+        );
+        this.mesh.position.set(
+            Math.random() * conf.size - conf.size2,
+            Math.random() * conf.size - conf.size2,
+            Math.random() * conf.size - conf.size2,
+        );
+        this.velocity = new THREE.Vector3(Math.random()*0.2-0.1, Math.random()*0.2-0.1, Math.random()*0.2-0.1);
         this.totalForceVector = new THREE.Vector3();
-        // this.forces = typeProperties[this.type].map(parameters => new Force(parameters));
 
-        
         /*** TRAIL ***/
-        // Create a buffer geometry for the trail
-        const trailGeometry = new THREE.BufferGeometry();
-        trailGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(conf.trailLength * 3), 3));
-        const trailMaterial = new THREE.LineBasicMaterial({ color: colors[type] });
+            // Create a buffer geometry for the trail
+            const trailGeometry = new THREE.BufferGeometry();
+            trailGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(conf.trailLength * 3), 3));
+            const trailMaterial = new THREE.LineBasicMaterial({ color: this.typeColor });
 
-        // Create the trail line
-        this.trail = new THREE.Line(trailGeometry, trailMaterial);
-        this.trailPositions = [this.mesh.position.clone()]; // Initialize with the initial position
+            // Create the trail line
+            this.trail = new THREE.Line(trailGeometry, trailMaterial);
+            this.trailPositions = [this.mesh.position.clone()]; // Initialize with the initial position
 
-        // Set the rest of the positions in the trail geometry to NaN
-        const positions = this.trail.geometry.attributes.position;
-        for (let i = 1; i < conf.trailLength; i++) {
-          positions.setXYZ(i, NaN, NaN, NaN);
-        }
-        positions.needsUpdate = true;
-
-        scene.add(this.trail);
+            // Set the rest of the positions in the trail geometry to NaN
+            const positions = this.trail.geometry.attributes.position;
+            for (let i = 1; i < conf.trailLength; i++) {
+            positions.setXYZ(i, NaN, NaN, NaN);
+            }
+            positions.needsUpdate = true;
+            scene.add(this.trail);
+        /** END TRAIL **/
     }
 
     update(particles) {
 
-        /**
-         * Wraps a value between a given minimum and maximum value.
-         * Similar to Python's modulo operator behavior for negative numbers.
-         * 
-         * @param {number} value - The value to be wrapped.
-         * @param {number} min - The lower bound of the range.
-         * @param {number} max - The upper bound of the range.
-         * @returns {number} The wrapped value.
-         */
-        const wrap = (value, min, max) => {
-            const rangeSize = max - min;
-            const valueRelativeToMin = value - min;
-            const wrappedPosition = (valueRelativeToMin % rangeSize + rangeSize) % rangeSize;
-
-            return wrappedPosition + min;
-        };
-
-        this.mesh.position.add(this.velocity);
         this.mesh.position.set(
             wrap(this.mesh.position.x, -conf.size2, conf.size2), 
             wrap(this.mesh.position.y, -conf.size2, conf.size2),
             wrap(this.mesh.position.z, -conf.size2, conf.size2)
         );
 
+        const m1 = this.mass + 1e-6;
+
         particles.forEach((particle) => {
-          if (this !== particle) {
+            if (this !== particle) {
+                // Initialize total electric and magnetic fields to zero
+                const E_total = new THREE.Vector3(0, 0, 0);
+                const B_total = new THREE.Vector3(0, 0, 0);
+                
+                const m2 = particle.mass;
+                
+                // Calculate the distance delta vector
+                const delta = new THREE.Vector3().subVectors(this.mesh.position, particle.mesh.position);
+                delta.set(
+                    wrap(delta.x, -conf.size2, conf.size2),
+                    wrap(delta.y, -conf.size2, conf.size2),
+                    wrap(delta.z, -conf.size2, conf.size2)
+                );
 
-              // For each particle, calculate the distance delta vector
-              const delta = new THREE.Vector3().subVectors(this.mesh.position, particle.mesh.position);
-              delta.set(
-                  wrap(delta.x, -conf.size2, conf.size2),
-                  wrap(delta.y, -conf.size2, conf.size2),
-                  wrap(delta.z, -conf.size2, conf.size2)
-              );
+                // Calculate the distance (magnitude of the vector)
+                const r = delta.length();
+                const r_hat = delta.normalize();
 
-              const dist = Math.sqrt(delta.lengthSq()) + 1e-6; // Add a small constant to avoid division by zero
-              
-              // const totalForceVector = new THREE.Vector3();
-              this.totalForceVector.set(0, 0, 0); // Reset the total force vector
-              forces.forEach((force, i) => {
-                  const forceVector = force.calculateForce(
-                      dist,
-                      delta,
-                      typeForceConstants[this.type][i],
-                      typeForceConstants[particle.type][i]
-                  );
-                  const forceMagnitude = typeForceConstants[this.type][i] * typeForceConstants[particle.type][i] / dist;
-                  forceVector.multiplyScalar(forceMagnitude);
-                  // totalForceVector.add(forceVector);
-                  this.totalForceVector.add(forceVector);
+                // Calculate the electric field contribution from this particle
+                const E_contribution = r_hat.clone().multiplyScalar(k * particle.charge / (r * r));
 
-              });
+                // Calculate the magnetic field contribution from this particle
+                const v_cross_r_hat = new THREE.Vector3().crossVectors(particle.velocity, r_hat);
+                const B_contribution = v_cross_r_hat.multiplyScalar(mu0 / (4 * Math.PI) * particle.charge / (r * r));
 
-              // After calculating all the forces and before updating the velocities:
-              let maxForce = 0;
-              let maxVelocity = 0;
-              particles.forEach((particle) => {
-                  const forceMagnitude = particle.totalForceVector.length();
-                  const velocityMagnitude = particle.velocity.length();
-                  maxForce = Math.max(maxForce, forceMagnitude);
-                  maxVelocity = Math.max(maxVelocity, velocityMagnitude);
-              });
+                // Add these contributions to the total electric and magnetic fields
+                E_total.add(E_contribution);
+                B_total.add(B_contribution);
+                
+                // Calculate the relative velocity
+                // const relativeVelocity = new THREE.Vector3().subVectors(this.velocity, particle.velocity);
+                const relativeVelocity = new THREE.Vector3().copy(particle.velocity).multiplyScalar(-1)
+                const relativeSpeed = relativeVelocity.length();
 
-              // Renormalize the forces and velocities
-              particles.forEach((particle) => {
-                  if (maxForce > 0) {
-                      particle.totalForceVector.divideScalar(maxForce);
-                  }
-                  if (maxVelocity > 0) {
-                      particle.velocity.divideScalar(maxVelocity);
-                  }
-              });
+                // Calculate the time dilation factor (gamma) using the relative speed
+                const innerSqrt = Math.max(1 - Math.pow(relativeSpeed / c, 2), 0); // Prevent negative values
+                const gamma = 1 / Math.sqrt(innerSqrt); // Gamma is 1 if relativeSpeed == 0 and approaches infinity as relativeSpeed approaches c
 
-              
-              const speed = this.velocity.length();
-              const c = 0.5; // Speed of light
-              const deltaV = this.totalForceVector; // Change in velocity
-              const newVelocity = this.velocity.clone().add(deltaV); // Calculate the new velocity without relativity
-              const newSpeed = newVelocity.length();
+                // Adjust dt based on gamma
+                const dt_dilated = dt / gamma;
 
-              if (newSpeed >= c) {
-                  // If the new speed exceeds the speed of light, adjust it using the relativistic velocity addition formula
-                  const u = deltaV.length();
-                  const v = speed;
-                  const newSpeedRelativistic = (v + u) / (1 + (v * u / Math.pow(c, 2)));
-                  newVelocity.normalize().multiplyScalar(newSpeedRelativistic);
-              }
+                // Calculate the force magnitude
+                const F = - G * (m1 * m2) / (r * r + EPSILON);
 
-              this.velocity = newVelocity;
-              // this.velocity.add(totalForceVector);
-              // this.velocity.clampLength(0, 0.2);
-          }
-      })
+                // Normalize the delta vector to get the direction
+                const direction = delta.normalize();
 
-        // Update the trail
-        const currentPosition = this.mesh.position.clone();
-        if (this.trailPositions.length > 0) {
-          // Calculate the distance between the current position and the last position in the trail
-          const distanceToLastPosition = currentPosition.distanceTo(this.trailPositions[0]);
+                // Calculate the force vector by scaling the direction vector by the force magnitude
+                const force = direction.multiplyScalar(F);
+                this.totalForceVector.set(0, 0, 0); // Reset the total force vector
+                this.totalForceVector.add(force);   // Add the gravitational force
 
-          // Define a threshold distance to detect wrap-around (e.g., half the size of the scene)
-          const wrapAroundThreshold = conf.size / 2;
+                // Now that we have the total fields, calculate the Lorentz force
+                const v_cross_B = new THREE.Vector3().crossVectors(this.velocity, B_total);
+                const F_Lorentz = E_total.clone().add(v_cross_B).multiplyScalar(this.charge);
+                
+                // Add this to the total force
+                this.totalForceVector.add(F_Lorentz);
 
-          // If the distance exceeds the threshold, insert a "gap" in the trail
-          if (distanceToLastPosition > wrapAroundThreshold) {
-            this.trailPositions.unshift(null); // Insert a null value to represent the gap
-          }
-        }
-        this.trailPositions.unshift(currentPosition);
-        if (this.trailPositions.length > conf.trailLength) {
-          this.trailPositions.pop();
-        }
+                // Calculate the acceleration
+                //const acceleration = new THREE.Vector3().copy(force).divideScalar(m1);
+                const acceleration = new THREE.Vector3().copy(this.totalForceVector).divideScalar(m1);
 
-        // Update the trail geometry
-        const positions = this.trail.geometry.attributes.position;
-        let vertexIndex = 0;
-        for (const position of this.trailPositions) {
-          if (position === null) {
-            // Skip the null value (gap in the trail)
-            positions.setXYZ(vertexIndex, NaN, NaN, NaN);
-          } else {
-            positions.setXYZ(vertexIndex, position.x, position.y, position.z);
-          }
-          vertexIndex++;
-        }
-        positions.needsUpdate = true;
+                this.velocity.add(acceleration.multiplyScalar(dt));
+                // Update the velocity
+                this.velocity.add(acceleration.multiplyScalar(dt_dilated));
+                if (this.velocity.length() > c) {
+                    this.velocity.normalize().multiplyScalar(c);
+                }
+
+                // Calculate the distance the particle would travel in one update (without length contraction)
+                const properDistance = this.velocity.clone().multiplyScalar(dt);
+
+                // Apply length contraction to the distance
+                const contractedDistance = properDistance.multiplyScalar(1 / gamma);
+
+                // Update the position using the contracted distance
+                this.mesh.position.add(contractedDistance);
+                
+            }
+        })
+        
+        /*** TRAIL ***/
+            // Update the trail
+            const currentPosition = this.mesh.position.clone();
+            if (this.trailPositions.length > 0) {
+                // Calculate the distance between the current position and the last position in the trail
+                const distanceToLastPosition = currentPosition.distanceTo(this.trailPositions[0]);
+
+                // Define a threshold distance to detect wrap-around (e.g., half the size of the scene)
+                const wrapAroundThreshold = conf.size / 2;
+
+                // If the distance exceeds the threshold, insert a "gap" in the trail
+                if (distanceToLastPosition > wrapAroundThreshold) {
+                    this.trailPositions.unshift(null); // Insert a null value to represent the gap
+                }
+            }
+            this.trailPositions.unshift(currentPosition);
+            if (this.trailPositions.length > conf.trailLength) {
+                this.trailPositions.pop();
+            }
+
+            // Update the trail geometry
+            const positions = this.trail.geometry.attributes.position;
+            let vertexIndex = 0;
+            for (const position of this.trailPositions) {
+                if (position === null) {
+                    // Skip the null value (gap in the trail)
+                    positions.setXYZ(vertexIndex, NaN, NaN, NaN);
+                } else {
+                    positions.setXYZ(vertexIndex, position.x, position.y, position.z);
+                }
+                vertexIndex++;
+            }
+            positions.needsUpdate = true;
+        /** END TRAIL **/
       }
-
 }
 
 init();
@@ -254,7 +257,7 @@ function cleanup() {
     }
 
     // Reset global variables
-    camera = null; scene = null; renderer = null; colors = null; typeForceConstants = null; particles = null; animationId = null;
+    camera = null; scene = null; renderer = null; colors = null; particles = null; animationId = null;
 
     conf.size2 = conf.size / 2;
     conf.cameraDistance = conf.size * 1.4;
@@ -298,6 +301,7 @@ function init() {
     // Set the OrbitControls target to the origin (0, 0, 0)
     controls.target.set(0, 0, 0);
     controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.2;
 
     // Limit the rotation to the XY plane
     controls.minPolarAngle = Math.PI / 2; // 90 degrees in radians
@@ -306,9 +310,9 @@ function init() {
     /*** GUI ***/
     const gui = new GUI();
 
-    gui.add(conf, 'size', 1, 100).step(1).onChange(() => cleanup());
-    gui.add(conf, 'numTypes', 1, 50).step(1).onChange(() => cleanup());
-    gui.add(conf, 'numForces', 1, 20).step(1).onChange(() => cleanup());
+    gui.add(conf, 'size', 1, 600).step(1).onChange(() => cleanup());
+    // gui.add(conf, 'numTypes', 1, 50).step(1).onChange(() => cleanup());
+    // gui.add(conf, 'numForces', 1, 20).step(1).onChange(() => cleanup());
     gui.add(conf, 'numParticles', 1, 400).step(1).onChange(() => cleanup());
     gui.add(conf, 'trailLength', 1, 100).step(1).onChange(() => cleanup());
 
@@ -339,54 +343,39 @@ function init() {
 
     colors = Array.from({ length: conf.numTypes }, () => new THREE.Color(Math.random(), Math.random(), Math.random()));
 
-    // For each type and force generate a constant and store in 2d array.
-    typeForceConstants = []; // Initialize an empty array
-    for (let i = 0; i < conf.numTypes; i++) {
-        let forceArray = []; // Initialize an array for this type
-        for (let j = 0; j < conf.numForces; j++) {
-            // Generate physical constants for this force and type
-            let typeForceConstant = Math.random() * 2 - 1; // Generate a random number between -1 and 1
-            forceArray.push(typeForceConstant); // Add the random number to the force array
-        }
-        typeForceConstants.push(forceArray); // Add the force array to the type array
-    }
-
-    // Create the forces
-    forces = Array.from({length: conf.numForces}, () => new Force());
-
     // Generate the particles
     particles = Array.from({ length: conf.numParticles }, () => new Particle(
-        (Math.random() - 0.5) * conf.size,
-        (Math.random() - 0.5) * conf.size,
-        (Math.random() - 0.5) * conf.size,
+        conf,
         Math.floor(Math.random() * conf.numTypes)
     )).map(p => (scene.add(p.mesh), p));
 };
 
 function animate() {
 
-  particles.forEach((particle) => particle.update(particles));
-  controls.update();
-  renderer.render(scene, camera);
-  animationId = requestAnimationFrame(animate); // Update the animationId variable with the value returned by requestAnimationFrame
+    particles.forEach((particle) => particle.update(particles));
+    controls.update();
+    renderer.render(scene, camera);
+    animationId = requestAnimationFrame(animate); // Update the animationId variable with the value returned by requestAnimationFrame
 
 }
 
 function onWindowResize() {
-  // Get the canvas wrapper element
-  const canvasWrapper = document.getElementById('canvasWrapper');
 
-  // Get the dimensions of the canvas wrapper
-  const wrapperWidth = canvasWrapper.clientWidth;
-  const wrapperHeight = canvasWrapper.clientHeight;
+    // Get the canvas wrapper element
+    const canvasWrapper = document.getElementById('canvasWrapper');
 
-  // Calculate the size of the canvas based on the smaller dimension of the wrapper
-  const canvasSize = Math.min(wrapperWidth, wrapperHeight) * 0.8; // 80% of the smaller dimension
+    // Get the dimensions of the canvas wrapper
+    const wrapperWidth = canvasWrapper.clientWidth;
+    const wrapperHeight = canvasWrapper.clientHeight;
 
-  // Update the camera's aspect ratio and projection matrix
-  camera.aspect = 1; // Square aspect ratio (1:1)
-  camera.updateProjectionMatrix();
+    // Calculate the size of the canvas based on the smaller dimension of the wrapper
+    const canvasSize = Math.min(wrapperWidth, wrapperHeight) * 0.8; // 80% of the smaller dimension
 
-  // Resize the renderer
-  renderer.setSize(canvasSize, canvasSize); // Set both width and height to canvasSize
+    // Update the camera's aspect ratio and projection matrix
+    camera.aspect = 1; // Square aspect ratio (1:1)
+    camera.updateProjectionMatrix();
+
+    // Resize the renderer
+    renderer.setSize(canvasSize, canvasSize); // Set both width and height to canvasSize
+
 }
