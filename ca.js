@@ -1,3 +1,232 @@
+
+/**
+ * Float32Tensor: A simple tensor class for storing float32 numbers.
+ *
+ * Attributes:
+ * - shape: Array of integers defining the shape of the tensor.
+ * - size: Total number of elements in the tensor.
+ * - data: Flat Float32Array storing the tensor elements.
+ * - strides: Array of integers defining the strides for each dimension.
+ */
+class Float32Tensor {
+    constructor(shape) {
+        this.shape = shape;
+        this.size = this.calculateTotalElements(shape);
+        this.data = new Float32Array(this.size);
+        this.strides = this.calculateStrides(shape);
+
+        // Initialize with random values
+        for (let i = 0; i < this.size; i++) {
+            this.data[i] = Math.random();
+        }
+    }
+
+    calculateTotalElements(shape) {
+        return shape.reduce((acc, dim) => acc * dim, 1);
+    }
+
+    calculateStrides(shape) {
+        const strides = new Array(shape.length);
+        strides[strides.length - 1] = 1;
+
+        for (let i = shape.length - 2; i >= 0; i--) {
+            strides[i] = strides[i + 1] * shape[i + 1];
+        }
+
+        return strides;
+    }
+
+    toFlatIndex(indices) {
+        let index = 0;
+
+        for (let i = 0; i < this.strides.length; i++) {
+            index += this.strides[i] * indices[i];
+        }
+
+        return index;
+    }
+
+    get(indices) {
+        let flatIndex = 0;
+        const len = this.strides.length;
+        for (let i = 0; i < len; i++) {
+            flatIndex += this.strides[i] * indices[i];
+        }
+        return this.data[flatIndex];
+    }
+    
+    set(indices, value) {
+        let flatIndex = 0;
+        const len = this.strides.length;
+        for (let i = 0; i < len; i++) {
+            flatIndex += this.strides[i] * indices[i];
+        }
+        this.data[flatIndex] = value;
+    }
+  
+}
+
+// Main function to pad tensor with shape [bs, c, h, w]
+function padTensor(tensor, paddingSize, mode = 'circular') {
+  const [bs, c, h, w] = tensor.shape;
+  const newH = h + 2 * paddingSize;  // Add padding to both sides of height
+  const newW = w + 2 * paddingSize;  // Add padding to both sides of width
+
+  // Initialize new tensor with the new shape
+  const newTensor = new Float32Tensor([bs, c, newH, newW]);
+
+  // Populate the new tensor
+  for (let b = 0; b < bs; b++) {
+    for (let ch = 0; ch < c; ch++) {
+      for (let x = 0; x < newH; x++) {
+        for (let y = 0; y < newW; y++) {
+          let origX = x - paddingSize;
+          let origY = y - paddingSize;
+
+          // Implement circular padding
+          if (mode === 'circular') {
+            if (origX < 0) origX = (h + origX) % h;
+            else if (origX >= h) origX %= h;
+
+            if (origY < 0) origY = (w + origY) % w;
+            else if (origY >= w) origY %= w;
+          }
+
+          // Copy values from the original tensor
+          const val = (origX >= 0 && origX < h && origY >= 0 && origY < w) ? 
+                      tensor.get([b, ch, origX, origY]) : 0;
+          newTensor.set([b, ch, x, y], val);
+        }
+      }
+    }
+  }
+
+  return newTensor;
+}
+
+// Unfold function to capture neighborhoods
+function unfold(tensor, kernelSize) {
+  // Assuming tensor shape is [bs, c, h, w]
+  const [bs, c, h, w] = tensor.shape;
+  
+  const d = Math.floor(kernelSize / 2);  // Distance from center to edge of kernel
+  const outH = h - 2 * d;  // Reduce the size of the output spatial dimensions
+  const outW = w - 2 * d;
+  
+  // Initialize the output tensor
+  const unfolded = new Float32Tensor([bs, c, outH, outW, kernelSize * kernelSize]);
+  
+  // Populate the unfolded tensor
+  for (let b = 0; b < bs; b++) {
+    for (let ch = 0; ch < c; ch++) {
+      let k = 0;  // Index for the last dimension of the unfolded tensor
+      for (let x = d; x < h - d; x++) {
+        for (let y = d; y < w - d; y++) {
+          for (let dx = -d; dx <= d; dx++) {
+            for (let dy = -d; dy <= d; dy++) {
+              const val = tensor.get([b, ch, x + dx, y + dy]);
+              unfolded.set([b, ch, x - d, y - d, k], val);
+              k++;
+            }
+          }
+          k = 0;  // Reset k for the next block
+        }
+      }
+    }
+  }
+  
+  return unfolded;
+}
+
+
+// Custom reduce function for Game of Life
+const gameOfLifeRule = (vals) => {
+  const centerIdx = Math.floor(vals.length / 2);
+  const currentState = vals[centerIdx];
+  const sum = vals.reduce((acc, v) => acc + v, 0) - currentState;  // Exclude the center cell
+  return currentState ? (sum === 2 || sum === 3) : (sum === 3);
+};
+
+// Reduce function
+function reduceLastDimension(tensor, reduceFn) {
+  // Assuming tensor shape is [bs, c, h, w, k]
+  const [bs, c, h, w, k] = tensor.shape;
+  
+  // Initialize the output tensor
+  const reduced = new Float32Tensor([bs, c, h, w]);
+  
+  // Populate the reduced tensor
+  for (let b = 0; b < bs; b++) {
+    for (let ch = 0; ch < c; ch++) {
+      for (let x = 0; x < h; x++) {
+        for (let y = 0; y < w; y++) {
+          let vals = [];
+          for (let ki = 0; ki < k; ki++) {
+            vals.push(tensor.get([b, ch, x, y, ki]));
+          }
+          const reducedVal = reduceFn(vals);
+          reduced.set([b, ch, x, y], reducedVal);
+        }
+      }
+    }
+  }
+  
+  return reduced;
+}
+
+
+const gameRule = (neighborhood) => {
+  const kernel = [.9, 1., .9, 
+                  1., 0., 1.,
+                  .9, 1., .9];
+
+  let sumNeighbors = 0;
+  for (let i = 0; i < neighborhood.length; i++) {
+    sumNeighbors += neighborhood[i] * kernel[i];
+  }
+  
+  if (sumNeighbors >= 0 && sumNeighbors < 2) {
+    return 0.;
+  } else if (sumNeighbors >= 2 && sumNeighbors < 3) {
+    return 0.95;
+  } else if (sumNeighbors >= 3) {
+    return 0.12;
+  }
+};
+
+
+
+/**
+ * // Create a Float32Tensor object of shape [1, 1, 4, 4] (N=1, C=1, H=4, W=4)
+ * const tensor = new Float32Tensor([1, 1, 4, 4]);
+ * 
+ * // Print the original tensor data (it should be filled with random numbers)
+ * console.log("Original tensor data:", tensor.data);
+ * 
+ * // Apply unfold with a kernel size of [2, 2] and stride of [1, 1]
+ * const unfolded = tensor.unfold([2, 2], [1, 1]);
+ * 
+ * // Print the unfolded tensor data
+ * console.log("Unfolded tensor data:", unfolded.data);
+ */
+
+// Usage
+// const tensor = new Float32Tensor([1, 3, 100, 100]);
+
+// Get an element
+// const value = tensor.get([0, 2, 50, 50]);
+
+// Set an element
+// tensor.set([0, 2, 50, 50], 0.42);
+
+// const paddingSize = [[0, 0], [0, 0], [2, 2], [2, 2]];  // Pad 1 row on both sides in dim 0, 2 rows in dim 1, and 3 rows in dim 2
+
+// Padding with constant value
+// const paddedTensorConstant = padTensor(tensor, paddingSize, 'constant', 0.42);
+
+// Padding with circular mode
+// const paddedTensorCircular = padTensor(tensor, paddingSize, 'circular');
+
 // Initialize canvas and context
 const canvas = document.getElementById("ca-canvas");
 const ctx = canvas.getContext("2d");
@@ -7,128 +236,64 @@ canvas.width = 400;
 canvas.height = 400;
 
 // Parameters
-const cellSize = 2;
+const cellSize = 4;
 const rows = Math.floor(canvas.height / cellSize);
 const cols = Math.floor(canvas.width / cellSize);
-let automataGrid = [];
+let automataGrid;
 
 // Initialize grid with random states for R, G, B
 function initGrid() {
-    automataGrid = Array.from({length: rows}, () => 
-      Array.from({length: cols}, () => ({
-        R: Math.random(),
-        G: Math.random(),
-        B: Math.random()
-      }))
-    );
-  }
-
-function padGrid(grid, paddingSize) {
-const paddedGrid = [
-    ...grid.slice(-paddingSize),
-    ...grid,
-    ...grid.slice(0, paddingSize)
-].map(row => [
-    ...row.slice(-paddingSize),
-    ...row,
-    ...row.slice(0, paddingSize)
-]);
-return paddedGrid;
-}  
-
-// Define neighborhoods
-const mooreNeighborhood = [
-    [-1, -1], [-1, 0], [-1, 1],
-    [0, -1],  [0, 0],  [0, 1],
-    [1, -1],  [1, 0],  [1, 1]
-  ];
-  
-  const circle1 = [
-    [-2, 0], [-1, -1], [-1, 1], [0, -2], [0, 2], [1, -1], [1, 1], [2, 0]
-  ];
-  
-  const circle2 = [
-    [-3, 0], [-2, -1], [-2, 1], [-1, -2], [-1, 2], [0, -3], [0, 3], [1, -2], [1, 2], [2, -1], [2, 1], [3, 0]
-  ];
-  
-// Weights for different neighborhoods
-let wM = 0.99777777;
-let wC1 = 0.99877777777777;
-let wC2 = 0.0013737373737373;
+  automataGrid = new Float32Tensor([1, 1, rows, cols]);
+}
   
 function updateGrid() {
-    const paddingSize = 7;  // Max distance of any neighborhood point from the cell
-    const paddedGrid = padGrid(automataGrid, paddingSize);
-  
-    const newGrid = automataGrid.map((row, i) =>
-      row.map((cell, j) => {
-        let sumR = 0, sumG = 0, sumB = 0;
-        let sumR1 = 0, sumG1 = 0, sumB1 = 0;
-        let sumR2 = 0, sumG2 = 0, sumB2 = 0;
-  
-        // Helper to update sum based on neighborhood
-        const updateSum = (neighborhood, sumR, sumG, sumB) => {
-          for (const [dx, dy] of neighborhood) {
-            const x = i + dx + paddingSize;
-            const y = j + dy + paddingSize;
-            sumR += paddedGrid[x][y].R;
-            sumG += paddedGrid[x][y].G;
-            sumB += paddedGrid[x][y].B;
-          }
-          return [sumR, sumG, sumB];
-        };
-  
-        // Summing over different neighborhoods
-        [sumR, sumG, sumB] = updateSum(mooreNeighborhood, sumR, sumG, sumB);
-        [sumR1, sumG1, sumB1] = updateSum(circle1, sumR1, sumG1, sumB1);
-        [sumR2, sumG2, sumB2] = updateSum(circle2, sumR2, sumG2, sumB2);
-  
-        // Calculate weighted averages using global variables for weights
-        const avgR = wM * (sumR / mooreNeighborhood.length) + wC1 * (sumR1 / circle1.length) + wC2 * (sumR2 / circle2.length);
-        const avgG = wM * (sumG / mooreNeighborhood.length) + wC1 * (sumG1 / circle1.length) + wC2 * (sumG2 / circle2.length);
-        const avgB = wM * (sumB / mooreNeighborhood.length) + wC1 * (sumB1 / circle1.length) + wC2 * (sumB2 / circle2.length);
-  
-        // More complex, chaotic update rules
-        // const dR = Math.sin(avgR * 2 * Math.PI) * (avgG - avgB);
-        // const dG = Math.sin(avgG * 2 * Math.PI) * (avgB - avgR);
-        // const dB = Math.sin(avgB * 2 * Math.PI) * (avgR - avgG);
-        const dR = Math.sin(avgR * 0.1 * Math.PI) * (avgG - avgB);
-        const dG = (avgB - avgR);
-        const dB = (avgR - avgG);
-  
-        // Bounded update
-        const newR = Math.min(Math.max(cell.R + dR, 0), 1);
-        const newG = Math.min(Math.max(cell.G + dG, 0), 1);
-        const newB = Math.min(Math.max(cell.B + dB, 0), 1);
-  
-        // Check for NaN and Infinity
-        return {
-          R: isNaN(newR) || !isFinite(newR) ? 0 : newR,
-          G: isNaN(newG) || !isFinite(newG) ? 0 : newG,
-          B: isNaN(newB) || !isFinite(newB) ? 0 : newB
-        };
-      })
-    );
+    const paddingSize = 1;  // Max distance of any neighborhood point from the cell
+    const paddedGrid = padTensor(automataGrid, paddingSize, 'circular');
+    const unfoldedGrid = unfold(paddedGrid, 3);
+
+    // Example usage
+    const newGrid = reduceLastDimension(unfoldedGrid, gameRule);
+
+    console.log("newGrid", newGrid.shape)
   
     automataGrid = newGrid;
   }
   
 
-// Draw the automata grid with RGB channels
-function drawGrid() {
+  function drawGrid() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    automataGrid.forEach((row, i) => {
-      row.forEach((cell, j) => {
-        ctx.fillStyle = `rgba(${Math.floor(255 * cell.R)}, ${Math.floor(255 * cell.G)}, ${Math.floor(255 * cell.B)}, 1)`;
+    const shape = automataGrid.shape;  // Either [bs, 3, h, w] or [bs, 1, h, w]
+    const channels = shape[1];
+    const rows = shape[2];
+    const cols = shape[3];
+  
+    for (let i = 0; i < rows; ++i) {
+      for (let j = 0; j < cols; ++j) {
+        let R, G, B;
+  
+        if (channels === 3) {
+          // RGB
+          R = automataGrid.get([0, 0, i, j]);
+          G = automataGrid.get([0, 1, i, j]);
+          B = automataGrid.get([0, 2, i, j]);
+        } else {
+          // Grayscale
+          const gray = automataGrid.get([0, 0, i, j]);
+          R = G = B = gray;
+        }
+        
+        ctx.fillStyle = `rgba(${Math.floor(255 * R)}, ${Math.floor(255 * G)}, ${Math.floor(255 * B)}, 1)`;
         ctx.fillRect(j * cellSize, i * cellSize, cellSize, cellSize);
-      });
-    });
+      }
+    }
   }
+  
+
 
 // Main loop with a fixed frame rate
 let animationID;
-const frameDelay = 1000 / 25;  // 25 frames per second
+const frameDelay = 1000 / 50;  // 25 frames per second
 
 function mainLoop() {
   updateGrid();
