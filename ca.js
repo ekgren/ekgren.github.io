@@ -194,39 +194,6 @@ const gameRule = (neighborhood) => {
   }
 };
 
-
-
-/**
- * // Create a Float32Tensor object of shape [1, 1, 4, 4] (N=1, C=1, H=4, W=4)
- * const tensor = new Float32Tensor([1, 1, 4, 4]);
- * 
- * // Print the original tensor data (it should be filled with random numbers)
- * console.log("Original tensor data:", tensor.data);
- * 
- * // Apply unfold with a kernel size of [2, 2] and stride of [1, 1]
- * const unfolded = tensor.unfold([2, 2], [1, 1]);
- * 
- * // Print the unfolded tensor data
- * console.log("Unfolded tensor data:", unfolded.data);
- */
-
-// Usage
-// const tensor = new Float32Tensor([1, 3, 100, 100]);
-
-// Get an element
-// const value = tensor.get([0, 2, 50, 50]);
-
-// Set an element
-// tensor.set([0, 2, 50, 50], 0.42);
-
-// const paddingSize = [[0, 0], [0, 0], [2, 2], [2, 2]];  // Pad 1 row on both sides in dim 0, 2 rows in dim 1, and 3 rows in dim 2
-
-// Padding with constant value
-// const paddedTensorConstant = padTensor(tensor, paddingSize, 'constant', 0.42);
-
-// Padding with circular mode
-// const paddedTensorCircular = padTensor(tensor, paddingSize, 'circular');
-
 // Initialize canvas and context
 const canvas = document.getElementById("ca-canvas");
 const ctx = canvas.getContext("2d");

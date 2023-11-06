@@ -5,6 +5,124 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Ariel Ekgren</title>
 <link rel="stylesheet" type="text/css" href="styles.css">
+
+<!-- ... existing head content ... -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.5/marked.min.js"></script>
+
+<!-- Load KaTeX's CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.0/dist/katex.min.css">
+
+<!-- Load KaTeX's JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/katex@0.15.0/dist/katex.min.js"></script>
+
+<!-- Optionally, load the auto-render extension to render math in <code> or <pre> blocks -->
+<script src="https://cdn.jsdelivr.net/npm/katex@0.15.0/dist/contrib/auto-render.min.js"></script>
+
+<script>
+
+function rewriteBaseUrl(event) {
+    // Prevent the default link behavior
+    event.preventDefault();
+
+    // Get the href attribute of the clicked link
+    const href = event.target.getAttribute('href');
+
+    // If the href is pointing to a markdown file, rewrite it to use the hash
+    if (href && href.endsWith('.md')) {
+        // Update the hash part of the URL
+        window.location.hash = href.replace('.md', '');
+    } else {
+        // For any other link, just navigate normally (you might want to handle this differently)
+        window.location.href = href;
+    }
+}
+
+// Call this function inside the loadMarkdown function after you set the innerHTML of the contentElement
+// This will attach the rewriteBaseUrl as a click event listener to each link
+function updateLinks() {
+    const links = document.querySelectorAll('a');
+    links.forEach(link => {
+        // Ignore links that already have a hash (as they are already set up for SPA navigation)
+        if (!link.getAttribute('href').startsWith('#')) {
+            link.addEventListener('click', rewriteBaseUrl);
+        }
+    });
+}
+
+async function loadMarkdown(path, pushToHistory = true) {
+    // Check if the path ends with '.md', if not, append it
+    if (!path.endsWith('.md')) {
+        path += '.md';
+    }
+
+    const contentElement = document.getElementById('markdown-content');
+    const url = `https://raw.githubusercontent.com/ekgren/ekgren.github.io/main/data/${path}`;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const markdown = await response.text();
+        const html = marked.parse(markdown);
+
+        contentElement.innerHTML = html;
+        updateLinks();
+        renderMath(contentElement);
+        if (pushToHistory) updateHistory(path);
+    } catch (error) {
+        console.error('Failed to load markdown content:', error);
+    }
+}
+
+function updateLinks() {
+    const links = document.querySelectorAll('#markdown-content a');
+    links.forEach(link => {
+        link.addEventListener('click', function(event) {
+            const href = link.getAttribute('href');
+            if (href && href.endsWith('.md')) {
+                event.preventDefault();
+                const newPath = href.slice(0, -3); // Remove the '.md' extension
+                loadMarkdown(newPath);
+            }
+        });
+    });
+}
+
+function renderMath(contentElement) {
+    if (window.katex) {
+        renderMathInElement(contentElement, {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "\\[", right: "\\]", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false }
+            ]
+        });
+    } else {
+        console.error('KaTeX library is not loaded!');
+    }
+}
+
+function updateHistory(path) {
+    const state = { path: path };
+    const title = ''; // Potentially update this with a meaningful title
+    history.pushState(state, title, `#${path}`);
+}
+
+// Listen to popstate event to handle back navigation
+window.onpopstate = function(event) {
+    if (event.state && event.state.path) {
+        loadMarkdown(event.state.path, false); // Set pushToHistory to false to avoid infinite loop
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    let path = window.location.hash.slice(1) || 'index.md';
+    history.replaceState({ path: path }, '', `#${path}`);
+    loadMarkdown(path, false);
+});
+
+</script>
+
 </head>
 
 <body>
@@ -12,7 +130,8 @@
 <div class="app-header">
     <div class="left-menu">
         <div class="menu-container">
-            <a aria-current="page" class="nav-item active" href="/">Overview</a>
+            <a aria-current="page" class="nav-item active" href="/">Main page</a>
+            <a class="nav-item" href="/about">About</a>
             <a class="nav-item" href="/ca">Cellular Automata</a>
             <a class="nav-item" href="/gallery">Gallery</a>
             <a class="nav-item" href="/particles">Particles</a>
@@ -37,41 +156,9 @@
     </div>
 </div>
 
-<hr>
-
-<!-- Papers -->
-<div class="container">
-    <div class="ctitle">papers</div>
-
-    <div class="pub">
-      <div class="pub-title"><a href="https://arxiv.org/pdf/2303.17183.pdf">The Nordic Pile: A 1.2 TB Nordic Dataset for Language Modeling</a></div>
-      <div class="pub-venue">ArXiv 2023</div>
-      <div class="pub-authors">Joey Öhman, Severine Verlinden, Ariel Ekgren, Amaru Cuba Gyllensten, Tim Isbister, Evangelia Gogoulou, Fredrik Carlsson, Magnus Sahlgren</div>
-    </div>
-
-    <div class="pub">
-      <div class="pub-title"><a href="https://aclanthology.org/2022.lrec-1.376.pdf">Lessons Learned from GPT-SW3: Building the First Large-Scale Generative Language Model for Swedish</a></div>
-      <div class="pub-venue">Proceedings of the Thirteenth Language Resources and Evaluation Conference 2022</div>
-      <div class="pub-authors">Ariel Ekgren, Amaru Cuba Gyllensten, Evangelia Gogoulou, Alice Heiman, Severine Verlinden, Joey Öhman, Fredrik Carlsson, Magnus Sahlgren</div>
-    </div>
-
-    <div class="pub">
-        <div class="pub-title"><a href="https://arxiv.org/pdf/2109.07348.pdf">Cross-lingual transfer of monolingual models</a></div>
-        <div class="pub-venue">ArXiv 2021</div>
-        <div class="pub-authors">Evangelia Gogoulou, Ariel Ekgren, Tim Isbister, Magnus Sahlgren</div>
-    </div>
-
-    <div class="pub">
-      <div class="pub-title"><a href="https://arxiv.org/abs/1808.04670">R-grams: Unsupervised Learning of Semantic Units in Natural Language</a></div>
-      <div class="pub-venue">Proceedings of the 13th International Conference on Computational Semantics-Student Papers 2019</div>
-      <div class="pub-authors">Ariel Ekgren, Amaru Cuba Gyllensten, Magnus Sahlgren</div>
-    </div>
-
-    <div>
-      <br>
-      <a href="https://scholar.google.com/citations?user=fhs8fggAAAAJ&hl=en">Google Scholar profile</a>
-    </div>
-  </div>
+<div id="markdown-content">
+  <!-- The markdown content will be injected here -->
+</div>
 
 </body>
 
