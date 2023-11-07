@@ -56,7 +56,7 @@ async function loadMarkdown(path, pushToHistory = true) {
     }
 
     const contentElement = document.getElementById('markdown-content');
-    const url = `https://raw.githubusercontent.com/ekgren/ekgren.github.io/main/data/${path}`;
+    const url = `https://raw.githubusercontent.com/ekgren/babel/main/data/${path}`;
 
     try {
         const response = await fetch(url);
