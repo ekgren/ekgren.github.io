@@ -258,3 +258,6 @@ hr {
   max-height: 80%;
 }
 
+.raw-markdown {
+  white-space: pre-wrap; /* This will cause newlines to be rendered */
+}
