@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>Ariel Ekgren</title>
+<link rel="stylesheet" type="text/css" href="styles.css">
+
+<!-- ... existing head content ... -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.5/marked.min.js"></script>
+
+<!-- Load KaTeX's CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.0/dist/katex.min.css">
+
+<!-- Load KaTeX's JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/katex@0.15.0/dist/katex.min.js"></script>
+
+<!-- Optionally, load the auto-render extension to render math in <code> or <pre> blocks -->
+<script src="https://cdn.jsdelivr.net/npm/katex@0.15.0/dist/contrib/auto-render.min.js"></script>
+
+<script>
+
+// Assuming currentMarkdown is a global variable holding the raw markdown data
+let currentMarkdown = '';
+let isMarkdownRendered = true;
+
+function rewriteBaseUrl(event) {
+    // Prevent the default link behavior
+    event.preventDefault();
+
+    // Get the href attribute of the clicked link
+    const href = event.target.getAttribute('href');
+
+    // If the href is pointing to a markdown file, rewrite it to use the hash
+    if (href && href.endsWith('.md')) {
+        // Update the hash part of the URL
+        window.location.hash = href.replace('.md', '');
+    } else {
+        // For any other link, just navigate normally (you might want to handle this differently)
+        window.location.href = href;
+    }
+}
+
+// Call this function inside the loadMarkdown function after you set the innerHTML of the contentElement
+// This will attach the rewriteBaseUrl as a click event listener to each link
+function updateLinks() {
+    const links = document.querySelectorAll('a');
+    links.forEach(link => {
+        // Ignore links that already have a hash (as they are already set up for SPA navigation)
+        if (!link.getAttribute('href').startsWith('#')) {
+            link.addEventListener('click', rewriteBaseUrl);
+        }
+    });
+}
+
+async function loadMarkdown(path, pushToHistory = true) {
+    // Check if the path ends with '.md', if not, append it
+    if (!path.endsWith('.md')) {
+        path += '.md';
+    }
+
+    const contentElement = document.getElementById('markdown-content');
+    const url = `https://raw.githubusercontent.com/ekgren/babel/main/data/${path}`;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const markdown = await response.text();
+        currentMarkdown = markdown; // Set the global variable with the new markdown
+        const html = marked.parse(markdown);
+
+        contentElement.innerHTML = html;
+        updateLinks();
+        renderMath(contentElement);
+        if (pushToHistory) updateHistory(path);
+    } catch (error) {
+        console.error('Failed to load markdown content:', error);
+    }
+}
+
+// Function to toggle between the rendered HTML and the raw markdown
+function toggleView() {
+    const markdownContainer = document.getElementById('markdown-content');
+    if (isMarkdownRendered) {
+        // Display the raw markdown
+        markdownContainer.textContent = currentMarkdown;
+        markdownContainer.classList.add('raw-markdown'); // Add the class to preserve whitespace and newlines
+        isMarkdownRendered = false;
+    } else {
+        // Display the rendered HTML
+        markdownContainer.innerHTML = marked.parse(currentMarkdown);
+        markdownContainer.classList.remove('raw-markdown'); // Remove the class as it's not needed for rendered HTML
+        updateLinks(); // Ensure links are still active
+        renderMath(markdownContainer); // Re-render math expressions
+        isMarkdownRendered = true;
+    }
+}
+
+function updateLinks() {
+    const links = document.querySelectorAll('#markdown-content a');
+    links.forEach(link => {
+        link.addEventListener('click', function(event) {
+            const href = link.getAttribute('href');
+            if (href && href.endsWith('.md')) {
+                event.preventDefault();
+                const newPath = href.slice(0, -3); // Remove the '.md' extension
+                loadMarkdown(newPath);
+            }
+        });
+    });
+}
+
+function renderMath(contentElement) {
+    if (window.katex) {
+        renderMathInElement(contentElement, {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "\\[", right: "\\]", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false }
+            ]
+        });
+    } else {
+        console.error('KaTeX library is not loaded!');
+    }
+}
+
+function updateHistory(path) {
+    const state = { path: path };
+    const title = ''; // Potentially update this with a meaningful title
+    history.pushState(state, title, `#${path}`);
+}
+
+// Listen to popstate event to handle back navigation
+window.onpopstate = function(event) {
+    if (event.state && event.state.path) {
+        loadMarkdown(event.state.path, false); // Set pushToHistory to false to avoid infinite loop
+    }
+};
+
+// Event listener for the toggle button
+// document.getElementById('toggle-view').addEventListener('click', toggleView);
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    let path = window.location.hash.slice(1) || 'index.md';
+    history.replaceState({ path: path }, '', `#${path}`);
+    loadMarkdown(path, false);
+
+    // Now move the toggle event listener inside the DOMContentLoaded callback
+    let toggleButton = document.getElementById('toggle-view');
+    if (toggleButton) {
+        toggleButton.addEventListener('click', toggleView);
+    } else {
+        console.error('Toggle view button not found');
+    }
+});
+
+</script>
+
+</head>
+
+<body>
+
+<div class="app-header">
+    <div class="left-menu">
+        <div class="menu-container">
+            <a aria-current="page" class="nav-item active" href="/">Main page</a>
+            <a class="nav-item" href="/about">About</a>
+            <a class="nav-item" href="/ca">Cellular Automata</a>
+            <a class="nav-item" href="/gallery">Gallery</a>
+            <a class="nav-item" href="/particles">Particles</a>
+        </div>
+    </div>
+</div>
+
+<!-- Header -->
+<div id="dhead" class="container">
+    <div class="row">
+        <div id="dpic">
+            <img src="assets/profile.jpeg" class="ppic">
+        </div>
+        <div id="ddesc">
+            <h1>Ariel Ekgren</h1>
+            <h2>Building LLMs</h2>
+            <div id="dico">
+                <a href="https://twitter.com/aryomo"><img src="assets/ctwitter.svg" class="iico"></a>
+                <a href="https://github.com/ekgren"><img src="assets/cgithub.svg" class="iico"></a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<button id="toggle-view">Toggle View</button>
+<div id="markdown-content">
+  <!-- The markdown content will be injected here -->
+</div>
+
+</body>
+
+</html>

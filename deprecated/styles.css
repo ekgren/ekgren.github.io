@@ -1,0 +1,263 @@
+body {
+  margin: 0;
+  padding: 0;
+  background-color: white;
+  font-family: sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+  color: #333;
+}
+
+/* Layout */
+.container {
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 15px;
+  padding-right: 15px;
+}
+@media (min-width: 992px) {
+  .container {
+      width: 970px;
+   }
+}
+.row {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+}
+
+/* Props */
+#dhead {
+  margin-top: 20px;
+}
+#dpic {
+  grid-column: span 6;
+  text-align: right;
+}
+#ddesc {
+  padding-top: 40px;
+  padding-left: 20px;
+  grid-column: span 6;
+}
+@media (max-width: 991px) {
+  #dpic {
+    grid-column: span 12;
+    text-align: center;
+  }
+  #ddesc {
+    grid-column: span 12;
+    padding-top: 20px;
+    text-align: center;
+  }
+}
+h1 {
+  font-size: 34px;
+  font-weight: normal;
+  padding: 0;
+  margin: 0;
+}
+h2 {
+  font-weight: normal;
+  font-style: italic;
+  color: #999;
+  font-size: 18px;
+  padding: 0;
+  margin: 5px 0 10px 0;
+}
+@media (min-width: 992px) {
+  h2 {
+      max-width: 300px;
+  }
+}
+#dpic img {
+  width: 240px;
+  height: 240px;
+  border-radius: 120px;
+}
+.iico {
+  width: 40px;
+  height: 40px;
+}
+#demail {
+  margin-top: 10px;
+  color: #555;
+  opacity: 0;
+  transition: opacity 0.7s;
+}
+
+hr {
+  height: 1px;
+  padding: 0;
+  margin: 20px 0px 20px 0px;
+  border: 1;
+}
+
+.ico {
+  grid-column: span 1;
+  vertical-align: top;
+  border-left: 2px solid #cfcfcf;
+  position: relative;
+}
+.ico img {
+  border-radius: 5px;
+  width: 100%;
+  max-width: 80px;
+  margin-left: 10px;
+}
+
+.ctitle {
+  font-size: 36px;
+  margin-bottom: 20px;
+  margin-top: 40px;
+}
+.cdesc {
+  height: 30px;
+  vertical-align: top;
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+@media (max-width: 768px) {
+  .cdesc {
+      font-size: 14px;
+      padding-bottom: 10px;
+  }
+}
+#pet-projects .row {
+  grid-column-gap: 10px;
+  grid-row-gap: 10px;
+}
+.project {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+.pico {
+  float: left;
+  margin-right: 10px;
+}
+.pdesc {
+}
+.pend {
+  clear: both;
+}
+.pico img {
+  height: 80px;
+  border-radius: 5px;
+  border: 1px solid #999;
+}
+.pub {
+  font-size: 14px;
+  border-left: 4px solid #aaa;
+  padding: 2px 0px 2px 10px;
+  margin-bottom: 10px;
+}
+.pub-title {
+  display: inline;
+  color: #333;
+}
+.pub-venue {
+  display: inline;
+  color: #090;
+}
+.pub-authors {
+  display: block;
+  color: #900;
+}
+
+
+
+.app-header .left-menu {
+  align-items: stretch;
+  align-self: stretch;
+  display: flex;
+  flex: 1 1
+}
+
+.app-header .menu-container {
+  align-items: center;
+  display: flex;
+  flex: 0 1;
+  justify-content: space-around;
+  margin: 0 10px 0 24px;
+  max-width: 700px
+}
+
+/*
+@media(max-width: 980px) {
+  .app-header .menu-container {
+      display:none
+  }
+}
+*/
+
+.app-header .menu-container .nav-item {
+  color: rgb(119, 119, 119); /* var(--gray-600);*/
+  cursor: pointer;
+  font-size: 14px;
+  padding: 10px 0;
+  text-decoration: none;
+  white-space: nowrap
+}
+
+.app-header .menu-container .nav-item:not(:first-child) {
+  margin-left: 24px
+}
+
+.app-header .menu-container .nav-item:visited {
+  color: var(--gray-600)
+}
+
+.app-header .menu-container .nav-item:hover {
+  color: var(--gray-800)
+}
+
+.app-header .menu-container .nav-item.active {
+  color: rgb(29, 144, 42); /* var(--green-600) */
+}
+
+/* GALLERY CSS */
+
+.image-gallery {
+  margin: 0 auto;
+  margin-top: 40px;
+  max-width: 900px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center; /* Changed from 'space-around' to 'center' */
+}
+
+.image-container {
+  margin: 50px;
+  cursor: pointer;
+}
+
+.thumbnail {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 4px; /* This line makes the thumbnails round */
+}
+
+.full-image {
+  max-width: 500px;
+  max-height: 500px;
+}
+
+#lightbox {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#lightbox-image {
+  max-width: 80%;
+  max-height: 80%;
+}
+
+.raw-markdown {
+  white-space: pre-wrap; /* This will cause newlines to be rendered */
+}
